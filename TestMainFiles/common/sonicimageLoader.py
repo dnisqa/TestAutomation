@@ -4,6 +4,7 @@
         Need console server to connect the console port of device.
         The management port of device connects http server.
     Parameter:
+        --build_ver: code build number
         --console_ip : console server ip
         --console_port : telnet port number
         --http_ip : http server ip address
@@ -16,7 +17,7 @@
         --dug_cfg : DUT default json cfg (filename)
 
     example:
-        python imageLoader.py \
+        python sonicimageLoader.py \
         --console_ip 192.168.2.251 \
         --console_port 1056 \
         --http_ip 192.168.2.37 \
@@ -26,6 +27,7 @@
         --mgmt_mask 255.255.255.0 \
         --gw_ip 192.168.2.254 \
         --fileweb_ip 192.168.59.161/sonic/conf/ \
+        --build_ver v280 \
         --dut_cfg cfg_9032v1default.json
 '''
 
@@ -114,6 +116,7 @@ class ImageLoader():
         self.console_port = device["console_port"]
         self.http_ip = device["http_ip"]
         self.image = device["image"]
+        self.build_ver = device["build_ver"]
         self.mgmt_interface = device["mgmt_interface"]
         self.mgmt_ip = device["mgmt_ip"]
         self.mgmt_mask = device["mgmt_mask"]
@@ -277,7 +280,7 @@ class ImageLoader():
                     if i in [0]:
                         child.sendline("more /etc/machine.conf")
                         child.expect([self.ONIE_PROMPT])
-                        cmd="onie-nos-install" + " http://" + self.http_ip + "/" + self.image
+                        cmd="onie-nos-install" + " http://" + self.http_ip + "/" + self.image + self.build_ver + "/" + "sonic-broadcom.bin"
                         print("\nLoading image : " + cmd)
                         child.sendline(cmd)
 #                        child.sendline("reboot")
@@ -334,6 +337,7 @@ if __name__ == "__main__":
     parser.add_argument("--console_port", help="console port number")
     parser.add_argument("--http_ip", help="HTTP server IP address")
     parser.add_argument("--image", help="path/image")
+    parser.add_argument("--build_ver", help="build number, ex: v280")
     parser.add_argument("--mgmt_interface", help="Management interface")
     parser.add_argument("--mgmt_ip", help="Management IP address")
     parser.add_argument("--mgmt_mask", help="Management IP mask")
@@ -352,6 +356,7 @@ if __name__ == "__main__":
                    "console_port" : args.console_port ,
                    "http_ip"    : args.http_ip,
                    "image"      : args.image,
+                   "build_ver"  : args.build_ver,
                    "mgmt_interface" : args.mgmt_interface,
                    "mgmt_ip"    : args.mgmt_ip,
                    "mgmt_mask"  : args.mgmt_mask,
@@ -360,10 +365,11 @@ if __name__ == "__main__":
                    "dut_cfg"    : args.dut_cfg}
     else:
 
-        device = { "console_ip" : "192.168.2.251",
-                   "console_port" : "1056",
-                   "http_ip"    : "192.168.2.102",
-                   "image"      : "onl/AG7648/ONL-AG7648",
+        device = { "console_ip" : "192.168.54.97",
+                   "console_port" : "4000",
+                   "http_ip"    : "192.168.59.161",
+                   "image"      : "sonic/images/Deb9/",
+                   "build_ver"  : "v280",
                    "mgmt_interface" : "ma1",
                    "mgmt_ip"    : "192.168.2.56",
                    "mgmt_mask"  : "255.255.255.0",
@@ -371,10 +377,11 @@ if __name__ == "__main__":
                    "fileweb_ip" : "192.168.59.161/sonic/conf/",
                    "dut_cfg"    : "cfg_default.json"}
 
-    print("%s %s %s %s %s %s %s %s %s %s" % (device["console_ip"],
+    print("%s %s %s %s %s %s %s %s %s %s %s" % (device["console_ip"],
                                        device["console_port"],
                                        device["http_ip"],
                                        device["image"],
+                                       device["build_ver"],
                                        device["mgmt_interface"],
                                        device["mgmt_ip"],
                                        device["mgmt_mask"],
