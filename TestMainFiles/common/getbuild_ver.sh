@@ -1,3 +1,4 @@
 #!/bin/bash
 
-build_ver="$(more SonicDeb9build.txt | xargs)"; echo $build_ver
+getbuild="$(more SonicDeb9build.txt | xargs)"; echo $getbuild
+build_ver=${getbuild##* }; echo $build_ver; export $build_ver
