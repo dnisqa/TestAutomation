@@ -172,7 +172,7 @@ class ImageLoader():
                               pexpect.TIMEOUT],
                               timeout=self.TIMEOUT)
 #            print("\ni = %d",i)
-            print("\n doing connect for test_debug_line3")
+            print("\n doing connect for test_debug_line3, i is %d", i)
 
             if i in [0]:
                 # LAST_LOGIN
