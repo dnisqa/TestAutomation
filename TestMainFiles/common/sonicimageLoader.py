@@ -48,7 +48,7 @@ class ImageLoader():
     DEF_USER_NAME = "admin"
     DEF_PASSWORD = "YourPaSsWoRd"
     SONIC_USER = "admin"
-    SONIC_PASSWOD = "YourPaSsWoRd"
+    SONIC_PASSWORD= "YourPaSsWoRd"
     #OS_LIST = ["onl","icos"]
     OS_LIST = ["onie","sonic"]
     OS_USER_NAME = [SONIC_USER,DEF_USER_NAME]
