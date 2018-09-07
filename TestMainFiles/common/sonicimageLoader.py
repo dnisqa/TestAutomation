@@ -138,11 +138,15 @@ class ImageLoader():
         child.logfile_read = sys.stdout
         child.logfile_send = sys.stdout
 
+        print("\n doing connect for test_debug_line1")
+
         self._prompt = self.USER_EXEC_MODE_PROMPT
 
         # To pass over the banner that comes before login prompt
         child.send(self.NEW_LINE_CHARACTER)
         retry=0
+
+        print("\n doing connect for test_debug_line2")
 
         for j in range(50):
             i = child.expect([self.LAST_LOGIN,
@@ -168,6 +172,8 @@ class ImageLoader():
                               pexpect.TIMEOUT],
                               timeout=self.TIMEOUT)
 #            print("\ni = %d",i)
+            print("\n doing connect for test_debug_line3")
+
             if i in [0]:
                 # LAST_LOGIN
                 child.send(self.NEW_LINE_CHARACTER)
