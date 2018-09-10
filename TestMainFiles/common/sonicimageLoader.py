@@ -171,6 +171,7 @@ class ImageLoader():
                               self.LOGIN_INCORRECT,
                               self.CLI_ERROR_MESSAGES,
                               self.SONIC_WRITE_CHECK,
+                              pexpect.EOF,
                               pexpect.TIMEOUT],
                               timeout=self.TIMEOUT)
             except:
