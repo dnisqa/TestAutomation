@@ -61,7 +61,7 @@ class ImageLoader():
     #LOGIN_PROMPT = '[lL]ogin:'
     SONIC_DEF_LOGIN_PROMPT = 'sonic login:'
     #SONIC_LOGIN_PROMPT = 'sonic-[\w] login:'
-    SONIC_LOGIN_PROMPT = 'sonic-(?ia) login:'
+    SONIC_LOGIN_PROMPT = 'sonic-(?is) login:'
     LOGIN_RETRY = 'Sorry, try again.'
     COMMAND_NOT_FOUND='command not found'
     SU_LOGIN_PROMPT = '\[sudo\] password for [\w]*:'
