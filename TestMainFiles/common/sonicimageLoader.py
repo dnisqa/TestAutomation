@@ -61,7 +61,7 @@ class ImageLoader():
     #LOGIN_PROMPT = '[lL]ogin:'
     SONIC_DEF_LOGIN_PROMPT = 'sonic login:'
     #SONIC_LOGIN_PROMPT = 'sonic-[\w] login:'
-    SONIC_LOGIN_PROMPT = 'sonic-[?is] login:'
+    SONIC_LOGIN_PROMPT = 'sonic-(?is) login:'
     LOGIN_RETRY = 'Sorry, try again.'
     COMMAND_NOT_FOUND='command not found'
     SU_LOGIN_PROMPT = '\[sudo\] password for [\w]*:'
@@ -150,7 +150,8 @@ class ImageLoader():
         print("\n doing connect for test_debug_line2")
 
         for j in range(50):
-            i = child.expect([self.LAST_LOGIN,
+            try:
+               i = child.expect([self.LAST_LOGIN,
                               self.SONIC_LOGIN_PROMPT,
                               self.SONIC_DEF_LOGIN_PROMPT,
                               self.PASSWORD_PROMPT,
@@ -172,7 +173,11 @@ class ImageLoader():
                               self.SONIC_WRITE_CHECK,
                               pexpect.TIMEOUT],
                               timeout=self.TIMEOUT)
-#            print("\ni = %d",i)
+            except:
+                print("Exception was thrown")
+                print("debug information:")
+                print(str(child))
+#           print("\ni = %d",i)
             print("\n child.expect content: %s", str(child.expect))
             print("\n doing connect for test_debug_line3, i is %d", i)
 
