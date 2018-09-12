@@ -61,7 +61,7 @@ class ImageLoader():
     #LOGIN_PROMPT = '[lL]ogin:'
     SONIC_DEF_LOGIN_PROMPT = 'sonic login:'
     #SONIC_LOGIN_PROMPT = 'sonic-[\w] login:'
-    SONIC_LOGIN_PROMPT = 'sonic-(?ia) login:'
+    SONIC_LOGIN_PROMPT = r'sonic-(\w+ *)login:'
     LOGIN_RETRY = 'Sorry, try again.'
     COMMAND_NOT_FOUND='command not found'
     SU_LOGIN_PROMPT = '\[sudo\] password for [\w]*:'
@@ -72,17 +72,18 @@ class ImageLoader():
     NEW_LINE_CHARACTER = '\r\n'
     SHOW_RUN_CMD = 'show run'
     CLI_ERROR_MESSAGES = 'incorrect password attempts'
-    USER_EXEC_MODE_PROMPT = '@[-\w_]*:[\w~/-]*#'
+#    USER_EXEC_MODE_PROMPT = '@[-\w_]*:[\w~/-]*#'
 #    LOCALHOST_EXEC_MODE_PROMPT = HOSTNAME+':~#'
 
     #--------------------------------------------------------------------
     # SONIC Option
     #--------------------------------------------------------------------
     SONIC_LINUX_EXEC_MODE_PROMPT = '@[-\w_]*:[\w~/-]*\$'
-    #SONIC_LINUX_Priv_MODE_PROMPT = '@[-\w_]*:[\w~/-]*\#'
+    SONIC_LINUX_Priv_MODE_PROMPT = '@[-\w_]*:[\w~/-]*\#'
     SONIC_PASSWORD_PROMPT = 'Password *'
     SONIC_SUDO_SU = 'sudo su'
-    SONIC_WRITE_CHECK = 'Existing file will be overwritten, continue? [y/N]: '
+    SONIC_WRITE_CHECK = r'Existing file will be(\s\w+\,\s\w+\?\s\[\w\/\w+]:)'
+    SONIC_FILE_GOT_FAIL = r'No such(\s\w+ \w+ \w+)'
 
     #--------------------------------------------------------------------
     # GRUB ONIE Option
@@ -124,6 +125,8 @@ class ImageLoader():
         self.gw_ip = device["gw_ip"]
         self.fileweb_ip = device["fileweb_ip"]
         self.dut_cfg = device["dut_cfg"]
+        self.OS_update = False
+        self.OS_SET = False
         self.loadimage = False
 #        self.loadimage = True
 
@@ -139,23 +142,22 @@ class ImageLoader():
         child.logfile_read = sys.stdout
         child.logfile_send = sys.stdout
 
-        print("\n doing connect for test_debug_line1")
-
-        self._prompt = self.USER_EXEC_MODE_PROMPT
+        self._prompt = self.SONIC_LINUX_Priv_MODE_PROMPT
 
         # To pass over the banner that comes before login prompt
         child.send(self.NEW_LINE_CHARACTER)
+        time.sleep(2)
         retry=0
 
-        print("\n doing connect for test_debug_line2")
-
         for j in range(50):
-            i = child.expect([self.LAST_LOGIN,
+            try:
+               i = child.expect([self.LAST_LOGIN,
                               self.SONIC_LOGIN_PROMPT,
                               self.SONIC_DEF_LOGIN_PROMPT,
                               self.PASSWORD_PROMPT,
-                              self.USER_EXEC_MODE_PROMPT,
                               self.SONIC_LINUX_EXEC_MODE_PROMPT,
+                              self.SONIC_LINUX_Priv_MODE_PROMPT,
+                              self.SONIC_WRITE_CHECK,
                               self.CHOOSE_OPTION_SONIC,
                               self.ONIE_SERVICE_DISCOVERY,
                               self.CHOOSE_ONIE_INSTALL_OS,
@@ -169,20 +171,26 @@ class ImageLoader():
                               self.NOS_INSTALL_FAILURE,
                               self.LOGIN_INCORRECT,
                               self.CLI_ERROR_MESSAGES,
-                              self.SONIC_WRITE_CHECK,
+                              self.SONIC_FILE_GOT_FAIL,
+                              pexpect.EOF,
                               pexpect.TIMEOUT],
                               timeout=self.TIMEOUT)
-#            print("\ni = %d",i)
-            print("\n child.expect content: %s", str(child.expect))
-            print("\n doing connect for test_debug_line3, i is %d", i)
+            except:
+                print("Exception was thrown")
+                print("debug information:")
+                print(str(child))
+#           print("\ni = %d",i)
+#            print("\n child.expect content: %s", str(child.expect))
 
             if i in [0]:
                 # LAST_LOGIN
                 child.send(self.NEW_LINE_CHARACTER)
             elif i in [1]:
                 # SONIC_LOGIN_PROMPT
-                time.sleep(2)
-                child.sendline(self.OS_USER_NAME[self.OS_choice])
+                #if not self.OS_update:
+                   time.sleep(2)
+                   child.sendline(self.OS_USER_NAME[self.OS_choice])
+                #else:
             elif i in [2]:
                 # SONIC_DEF_LOGIN_PROMPT
                 self.OS_choice = 1
@@ -190,95 +198,117 @@ class ImageLoader():
                 child.sendline(self.OS_USER_NAME[self.OS_choice])
             elif i in [3]:
                 # PASSWORD_PROMPT
-                time.sleep(1)
+                time.sleep(2)
                 child.sendline(self.OS_PASSWORD[self.OS_choice])
-                if self.OS_choice == 1:
-                    child.sendline(self.SONIC_SUDO_SU)
             elif i in [4]:
-                # USER_EXEC_MODE_PROMPT
-                child.send(self.NEW_LINE_CHARACTER)
-                if not self.loadimage :
-                    child.sendline("sudo -S reboot")
-                else:
-                    # configure management interface
-                    child.sendline(format("sudo -S ifconfig %s down" %
-                                          self.mgmt_interface))
-                    child.sendline(format("sudo ifconfig %s %s netmask %s up" %
-                                          (self.mgmt_interface,
-                                           self.mgmt_ip,
-                                           self.mgmt_mask)))
-                    child.expect([self._prompt])
-                    child.sendline("sudo route delete default")
-                    child.expect([self._prompt])
-                    child.sendline(format("sudo route add default gw %s %s" %
-                                         (self.gw_ip,
-                                          self.mgmt_interface)))
-                    child.expect([self._prompt])
-                    child.send(self.NEW_LINE_CHARACTER)
-                    if self.OS_choice == 1 and self.loadimage:
-                       #child.expect([self._prompt])
-                       #cmd = "onie-nos-install" + " http://" + self.http_ip + "/" + self.image
-                       cmda = "curl " + "http://" + self.fileweb_ip + self.dut_cfg + " -s -o " + self.dut_cfg
-                       print("\nDownload Dut default config json: " + cmda)
-                       child.sendline(cmda)
-                       cmda = "curl " + "http://" + self.fileweb_ip + "autologout_time.sh" + " -s -o autologout_time.sh"
-                       print("\nDownload Dut default setting 1 script: " + cmda)
-                       child.sendline(cmda)
-                       cmda = "curl " + "http://" + self.fileweb_ip + "clearlog_gz.sh" + " -s -o clearlog_gz.sh"
-                       print("\nDownload Dut default setting 2 script: " + cmda)
-                       child.sendline(cmda)
-                       cmda = "curl " + "http://" + self.fileweb_ip + "sshd_mod.sh" + " -s -o sshd_mod.sh"
-                       print("\nDownload Dut default setting 3 script: " + cmda)
-                       child.sendline(cmda)
-                       child.sendline(format("%s" %self.SONIC_SUDO_SU))
-                       cmdb = "./" + "autologout_time.sh"
-                       child.sendline(cmdb)
-                       cmdb = "./" + "sshd_mod.sh"
-                       child.sendline(cmdb)
-                       cmdb = "./" + "clearlog_gz.sh"
-                       child.sendline(cmdb)
-                       cmdb = "sonic-cfggen -j " + self.dut_cfg + " --write-to-db & config save"
-                       child.sendline(cmdb)
-                       child.expect([self._prompt])
-                    else:
-                       break
-            elif i in [5]:
                 # SONIC_LINUX_EXEC_MODE_PROMPT
+                time.sleep(2)
+                child.send(self.NEW_LINE_CHARACTER)
                 if not self.loadimage:
                     child.sendline(format("sudo -S reboot"))
                     child.expect([self.BOOTMENU], timeout=600)
+                elif not self.OS_update and not self.OS_SET:
+                    time.sleep(2)
+                    child.sendline(self.SONIC_SUDO_SU)
+                else:
+                    time.sleep(1)
+                    child.sendline(format("exit"))
+                    print("\n Dut has been upgraded OS code, update result is Pass")
+                    break
+            elif i in [5]:
+                # SONIC_LINUX_Priv_MODE_PROMPT
+                if self.OS_choice == 1 and self.loadimage and not self.OS_SET:
+                    time.sleep(2)
+                    child.send(self.NEW_LINE_CHARACTER)
+                    # configure management interface
+                    child.sendline(format("ifconfig %s down" %
+                        self.mgmt_interface))
+                    child.sendline(format("ifconfig %s %s netmask %s up" %
+                        (self.mgmt_interface,
+                         self.mgmt_ip,
+                         self.mgmt_mask)))
+                    child.expect([self._prompt])
+                    time.sleep(2)
+                    child.sendline("route delete default")
+                    child.expect([self._prompt])
+                    time.sleep(2)
+                    child.sendline(format("route add default gw %s %s" %
+                        (self.gw_ip,
+                         self.mgmt_interface)))
+                    #child.expect([self._prompt])
+                    child.send(self.NEW_LINE_CHARACTER)
+                    time.sleep(1)
+                    cmda = "curl " + "http://" + self.fileweb_ip + self.dut_cfg + " \\" + "-s -o " + self.dut_cfg
+                    child.sendline(cmda)
+                    time.sleep(1)
+                    cmda = "curl " + "http://" + self.fileweb_ip + "autologout_time.sh" + " -s -o autologout_time.sh"
+                    child.sendline(cmda)
+                    time.sleep(1)
+                    cmda = "curl " + "http://" + self.fileweb_ip + "clearlog_gz.sh" + " -s -o clearlog_gz.sh"
+                    child.sendline(cmda)
+                    time.sleep(1)
+                    cmda = "curl " + "http://" + self.fileweb_ip + "sshd_mod.sh" + " -s -o sshd_mod.sh"
+                    child.sendline(cmda)
+                    time.sleep(1)
+                    cmdb = "./" + "autologout_time.sh"
+                    child.sendline(cmdb)
+                    time.sleep(1)
+                    cmdb = "./" + "sshd_mod.sh"
+                    child.sendline(cmdb)
+                    time.sleep(1)
+                    cmdb = "./" + "clearlog_gz.sh"
+                    child.sendline(cmdb)
+                    time.sleep(1)
+                    cmdb = "sonic-cfggen -j " + self.dut_cfg + " --write-to-db"
+                    child.sendline(cmdb)
+                    time.sleep(1)
+                    child.expect([self._prompt])
+                    time.sleep(1)
+                    cmdb = "config save"
+                    child.sendline(cmdb)
+                    time.sleep(2)
+                    self.OS_SET = True
+                elif self.OS_SET and not self.OS_update:
+                    continue
                 else:
                     break
             elif i in [6]:
+                # SONIC_WRITE_CHECK, put y to save config
+                child.sendline("y")
+                time.sleep(5)
+                self.OS_update = True
+                child.sendline(format("sudo -S reboot"))
+                child.expect([self.BOOTMENU], timeout=600)
+            elif i in [7]:
                 # CHOOSE_OPTION_SONIC
                 if not self.loadimage :
                     child.sendline(self.KEY_DOWN)
                 else:
                     child.sendline(self.NEW_LINE_CHARACTER)
-            elif i in [7]:
+            elif i in [8]:
                 # ONIE_SERVICE_DISCOVERY
                 child.sendline(self.NEW_LINE_CHARACTER)
                 child.sendline("onie-discovery-stop")
                 child.sendline(self.NEW_LINE_CHARACTER)
-            elif i in [8]:
+            elif i in [9]:
                 #CHOOSE_ONIE_INSTALL_OS
                 child.sendline(self.NEW_LINE_CHARACTER)
-            elif i in [9,10,11,12]:
+            elif i in [10,11,12,13]:
                 # CHOOSE_ONIE_RESCUE,
                 # CHOOSE_ONIE_UNINSTALL_OS,
                 # CHOOSE_ONIE_UPDATE_ONIE,
                 # CHOOSE_ONIE_EMBED_ONIE,
                 child.send(self.KEY_UP)
-            elif i in [13]:
+            elif i in [14]:
                 # CHOOSE_OPTION_ONIE
                 if not self.loadimage :
                     child.sendline(self.NEW_LINE_CHARACTER)
                 else:
                     child.send(self.KEY_UP)
-            elif i in [14]:
+            elif i in [15]:
                 # BOOTMENU
                 continue
-            elif i in [15]:
+            elif i in [16]:
                 # ONIE_PROMPT
                 if not self.loadimage :
                     child.sendline("onie-discovery-stop")
@@ -298,11 +328,11 @@ class ImageLoader():
                     child.expect([self.BOOTMENU],timeout = 600)
                 else:
                     break
-            elif i in [16]:
+            elif i in [17]:
                 # NOS_INSTALL_FAILURE
                 child.sendline("reboot")
                 child.expect([self.BOOTMENU],timeout = 600)
-            elif i in [17]:
+            elif i in [18]:
                 # LOGIN_INCORRECT
 #                child.send(self.NEW_LINE_CHARACTER)
                 retry += 1
@@ -315,19 +345,20 @@ class ImageLoader():
                         retry = 0
                 else:
                     continue
-
-            elif i in [18]:
+            elif i in [19]:
                 # CLI_ERROR_MESSAGES
                 child.send(self.NEW_LINE_CHARACTER)
-            elif i in [19]:
-                # SONIC_WRITE_CHECK, put y to save config
-                child.sendline("y")
-                time.sleep(5)
-                child.sendline("reboot")
-                break
             elif i in [20]:
-                # pexpect.TIMEOUT
+                # SONIC_FILE_GOT_FAIL
+                time.sleep(1)
                 child.send(self.NEW_LINE_CHARACTER)
+                print("\nDut Default setting file can't got from Server")
+                print("\nThe OS update process will be closed, try again later")
+                print("\n OS update code result is Fail")
+                break
+            #elif i in [21]:
+            #    # pexpect.TIMEOUT
+            #    child.send(self.NEW_LINE_CHARACTER)
             else:
                 child.send(self.NEW_LINE_CHARACTER)
                 print("\nNo matching")
